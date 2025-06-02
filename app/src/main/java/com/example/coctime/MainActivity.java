@@ -1,0 +1,270 @@
+package com.example.coctime;
+
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.ContextMenu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ListView;
+import android.widget.PopupMenu;
+
+import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+
+@RequiresApi(api = Build.VERSION_CODES.O)
+public class MainActivity extends AppCompatActivity {
+    ListView lv;
+    ArrayList<Item> list;
+    Adapter adapter;
+    Item it;
+    byte apprentice, assistant, bellTower;
+    static final String SET_FILE_NAME = "settings.ser";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
+        setContentView(R.layout.activity_main);
+
+        try {
+            FileInputStream fis = openFileInput(SET_FILE_NAME);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            list = (ArrayList<Item>) ois.readObject();
+            apprentice = ois.readByte();
+            assistant = ois.readByte();
+            bellTower = ois.readByte();
+            ois.close();
+            fis.close();
+        } catch (IOException | ClassNotFoundException e) {
+            list = new ArrayList<>();
+            bellTower = assistant = apprentice = 0;
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+        registerForContextMenu(lv = findViewById(R.id.lv));
+        lv.setAdapter(adapter = new Adapter(this, list));
+
+        findViewById(R.id.iv_set).setOnClickListener(v -> {
+            PopupMenu menu = new PopupMenu(this, v);
+            MenuInflater inflater = menu.getMenuInflater();
+            inflater.inflate(R.menu.settings_menu, menu.getMenu());
+            menu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.menu_set) return set();
+                if (item.getItemId() == R.id.menu_add) return add();
+                if (item.getItemId() == R.id.menu_bell_tower) return bellTower();
+                if (item.getItemId() == R.id.menu_building_potion) return buildingPotion();
+                if (item.getItemId() == R.id.menu_lab_potion) return labPotion();
+                return false;
+            });
+            menu.show();
+        });
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        getMenuInflater().inflate(R.menu.list_item_menu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(@NonNull MenuItem item) {
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+        assert info != null;
+        int id = item.getItemId();
+        if (id == R.id.menu_add) return add();
+        int pos = info.position;
+        if (id == R.id.menu_edt) return edit(pos);
+        if (id == R.id.menu_del) return del(pos);
+        if (id == R.id.menu_apprentice) return applyApprentice(pos);
+        if (id == R.id.menu_assistant) return applyAssistant(pos);
+        return super.onContextItemSelected(item);
+    }
+
+    boolean edit(int pos) {
+        Intent intent = new Intent(this, ItemEditActivity.class);
+        if (pos < 0 || pos >= list.size()) return false;
+        it = list.get(pos);
+        intent.putExtra("account", it.account);
+        intent.putExtra("isEdit", true);
+        intent.putExtra("project", it.project);
+        intent.putExtra("type", it.type);
+        startActivityForResult(intent, 1);
+        return true;
+    }
+
+    boolean add() {
+        startActivityForResult(new Intent(this, ItemEditActivity.class), 1);
+        return true;
+    }
+
+    boolean bellTower() {
+        byte account = getAccount();
+        if (account == -1) return false;
+        for (Item item : list)
+            if (item.type == Item.TYPE_NIGHT && item.account == account)
+                item.time = accelerate(item.time, bellTower, (byte) 10);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
+    boolean applyApprentice(int pos) {
+        Item it = list.get(pos);
+        it.time = accelerate(it.time, (byte) 60, apprentice);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
+    boolean applyAssistant(int pos) {
+        Item it = list.get(pos);
+        it.time = accelerate(it.time, (byte) 60, assistant);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
+    boolean set() {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        intent.putExtra("building", apprentice);
+        intent.putExtra("lab", assistant);
+        intent.putExtra("bellTower", bellTower);
+        startActivityForResult(intent, 2);
+        return true;
+    }
+
+    boolean del(int pos) {
+        list.remove(pos);
+        return true;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && data != null)
+            if (requestCode == 1)
+                editItemRes(data);
+            else {
+                apprentice = data.getByteExtra("building", (byte) 0);
+                assistant = data.getByteExtra("lab", (byte) 0);
+                bellTower = data.getByteExtra("bellTower", (byte) 0);
+            }
+    }
+
+    void editItemRes(Intent data) {
+        if (it != null) {
+            byte type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
+            it.setDate(data.getStringExtra("time"));
+            it.account = data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON;
+            it.project = data.getStringExtra("project");
+            it.type = type;
+            adapter.notifyDataSetChanged();
+            it = null;
+        } else {
+            Item it = new Item(data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON, data.getStringExtra("project"), data.getStringExtra("time"), data.getByteExtra("type", Item.TYPE_HOME_BUILDING));
+            int i = list.size();
+            list.add(it);
+            while (i-- > 0) {
+                Item t = list.get(i);
+                if (t.compareTo(it) <= 0) break;
+                list.set(i + 1, t);
+            }
+            list.set(i + 1, it);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    /**
+     * 使用加速器
+     *
+     * @param t   加速前计划完成时间
+     * @param len 加速多长时间 (分钟)
+     * @param mul 加速器倍率
+     * @return 加速后计划完成时间
+     */
+    static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
+        LocalDateTime now = LocalDateTime.now();
+        if (t == null || t.isBefore(now)) return t;
+        int m = (int) ChronoUnit.MINUTES.between(now, t), n = len * mul;
+        return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            FileOutputStream fos = openFileOutput(SET_FILE_NAME, MODE_PRIVATE);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(list);
+            oos.writeByte(apprentice);
+            oos.writeByte(assistant);
+            oos.writeByte(bellTower);
+            oos.close();
+            fos.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    /*void showErrorDialog(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("输入错误").setMessage(message).setPositiveButton("确定", (dialog, which) -> dialog.dismiss());
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }*/
+
+    boolean buildingPotion() {
+        byte account = getAccount();
+        if (account == -1) return false;
+        for (Item it : list)
+            if (it.type == Item.TYPE_HOME_BUILDING && it.account == account)
+                it.time = accelerate(it.time, (byte) 60, (byte) 10);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
+    boolean labPotion() {
+        byte account = getAccount();
+        if (account == -1) return false;
+        for (Item it : list)
+            if (it.type == Item.TYPE_HOME_LAB && it.account == account)
+                it.time = accelerate(it.time, (byte) 60, (byte) 24);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
+    byte getAccount() {
+        byte[] r = new byte[1];
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择账号");
+        builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
+            r[0] = (byte) which;
+            dialog.dismiss();
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> {
+            r[0] = -1;
+            dialog.dismiss();
+        });
+        builder.create().show();
+        return r[0];
+    }
+}

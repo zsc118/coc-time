@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@id/menu_add" android:title="@string/str_add"/>
+    <item android:id="@+id/menu_set" android:title="@string/settings"/>
+    <item android:id="@+id/menu_bell_tower" android:title="@string/bell_tower"/>
+    <item android:id="@+id/menu_building_potion" android:title="@string/building_potion"/>
+    <item android:id="@+id/menu_lab_potion" android:title="@string/lab_potion"/>
+</menu>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/menu_edt" android:title="@string/str_edit"/>
+    <item android:id="@+id/menu_add" android:title="@string/str_add"/>
+    <item android:id="@+id/menu_del" android:title="@string/str_del"/>
+    <item android:id="@+id/menu_apprentice" android:title="@string/speed_apprentice"/>
+    <item android:id="@+id/menu_assistant" android:title="@string/speed_assistant"/>
+</menu>
