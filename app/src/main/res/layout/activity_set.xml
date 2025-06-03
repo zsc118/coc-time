@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="30dp"
-    android:background="@android:color/white"
     android:gravity="center_horizontal">
 
     <TextView
@@ -20,10 +19,8 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:id="@+id/et_building_level"
-        android:background="@android:drawable/edit_text"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:backgroundTint="@android:color/darker_gray"
         android:gravity="center_vertical" />
 
     <TextView
@@ -39,10 +36,8 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:id="@+id/et_lab_level"
-        android:background="@android:drawable/edit_text"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:backgroundTint="@android:color/darker_gray"
         android:gravity="center_vertical" />
 
     <TextView
@@ -58,10 +53,8 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:id="@+id/et_bell_tower"
-        android:background="@android:drawable/edit_text"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:backgroundTint="@android:color/darker_gray"
         android:gravity="center_vertical" />
 
     <LinearLayout
@@ -77,8 +70,6 @@
             android:layout_weight="1"
             android:id="@+id/btn_set_ok"
             android:text="@string/ok"
-            android:backgroundTint="@android:color/holo_blue_dark"
-            android:textColor="@android:color/white"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:background="@android:drawable/btn_default" />
@@ -89,8 +80,6 @@
             android:layout_weight="1"
             android:id="@+id/btn_set_cancel"
             android:text="@string/cancel"
-            android:backgroundTint="@android:color/darker_gray"
-            android:textColor="@android:color/white"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
             android:background="@android:drawable/btn_default" />

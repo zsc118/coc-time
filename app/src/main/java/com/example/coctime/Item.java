@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class Item implements Comparable<Item>, Serializable {
+    private static final long serialVersionUID = 1L;
     public static final byte ACC_EPSILON = 0;
     public static final byte ACC_DELTA = 1;
     public static final String[] TYPE_NAME = new String[]{"家乡建筑", "家乡科技", "夜世界", "其它"};

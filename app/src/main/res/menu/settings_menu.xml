@@ -6,4 +6,5 @@
     <item android:id="@+id/menu_building_potion" android:title="@string/building_potion"/>
     <item android:id="@+id/menu_lab_potion" android:title="@string/lab_potion"/>
     <item android:id="@+id/menu_bellTower_potion" android:title="@string/bellTower_potion"/>
+    <item android:id="@+id/menu_save" android:title="@string/save"/>
 </menu>

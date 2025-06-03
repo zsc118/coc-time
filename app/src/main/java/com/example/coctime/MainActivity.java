@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     Adapter adapter;
     Item it;
     byte apprentice, assistant, bellTower;
+    int pos;
     static final String SET_FILE_NAME = "settings.ser";
 
     @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
@@ -69,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
             ois.close();
             fis.close();
         } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
             list = new ArrayList<>();
             bellTower = assistant = apprentice = 0;
         }
@@ -96,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
                 if (id == R.id.menu_building_potion) return buildingPotion();
                 if (id == R.id.menu_lab_potion) return labPotion();
                 if (id == R.id.menu_bellTower_potion) return bellTowerPotion();
+                if (id == R.id.menu_save) return save();
                 return false;
             });
             menu.show();
@@ -122,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         assert info != null;
         int id = item.getItemId();
         if (id == R.id.menu_add) return add();
-        int pos = info.position;
+        pos = info.position;
         if (id == R.id.menu_edt) return edit(pos);
         if (id == R.id.menu_del) return del(pos);
         if (id == R.id.menu_apprentice) return applyApprentice(pos);
@@ -210,18 +213,34 @@ public class MainActivity extends AppCompatActivity {
 
     void editItemRes(Intent data) {
         LocalDateTime t = Item.str2date(data.getStringExtra("time"));
-        if (t == null) {
-            Toast.makeText(this, "时间格式错误！", Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (it != null) {
-            it.time = t;
+            if (t != null) {
+                it.time = t;
+                int i = pos - 1;
+                if (pos > 0 && it.compareTo(list.get(i)) < 0) {
+                    list.set(pos, list.get(i));
+                    while (i-- > 0 && it.compareTo(list.get(i)) < 0) list.set(i + 1, list.get(i));
+                    list.set(i + 1, it);
+                } else {
+                    int n = list.size() - 1;
+                    if (pos < n && it.compareTo(list.get(i = pos + 1)) > 0) {
+                        list.set(pos, list.get(i));
+                        while (i++ < n && it.compareTo(list.get(i)) > 0)
+                            list.set(i - 1, list.get(i));
+                        list.set(i - 1, it);
+                    }
+                }
+            }
             it.account = data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON;
             it.project = data.getStringExtra("project");
             it.type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
             setNotificationAlarm(it);
             it = null;
         } else {
+            if (t == null) {
+                Toast.makeText(this, "时间格式错误！", Toast.LENGTH_SHORT).show();
+                return;
+            }
             Item it = new Item(data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON, data.getStringExtra("project"), t, data.getByteExtra("type", Item.TYPE_HOME_BUILDING));
             int i = list.size();
             list.add(it);
@@ -251,9 +270,7 @@ public class MainActivity extends AppCompatActivity {
         return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    boolean save() {
         try {
             FileOutputStream fos = openFileOutput(SET_FILE_NAME, MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -264,7 +281,15 @@ public class MainActivity extends AppCompatActivity {
             oos.close();
             fos.close();
         } catch (IOException ignored) {
+            return false;
         }
+        return true;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        save();
     }
 
     /*void showErrorDialog(String message) {

@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp"
-    android:background="@android:color/white"
     android:gravity="center_horizontal">
 
     <TextView
@@ -86,7 +85,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/et_pjt"
         android:padding="12dp"
-        android:background="@android:drawable/editbox_background"
         android:textSize="16sp" />
 
     <TextView
@@ -103,7 +101,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/et_time"
         android:padding="12dp"
-        android:background="@android:drawable/editbox_background"
         android:textSize="16sp"
         android:hint="@string/time_hint" />
 
@@ -119,8 +116,6 @@
             android:layout_height="wrap_content"
             android:id="@+id/btn_cnl"
             android:text="@string/cancel"
-            android:backgroundTint="@android:color/darker_gray"
-            android:textColor="@android:color/white"
             android:paddingStart="24dp"
             android:paddingEnd="24dp" />
 
@@ -129,8 +124,6 @@
             android:layout_height="wrap_content"
             android:id="@+id/btn_ok"
             android:text="@string/ok"
-            android:backgroundTint="@android:color/holo_blue_dark"
-            android:textColor="@android:color/white"
             android:paddingStart="24dp"
             android:paddingEnd="24dp" />
     </LinearLayout>
