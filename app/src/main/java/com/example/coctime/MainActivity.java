@@ -1,6 +1,10 @@
 package com.example.coctime;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.ContextMenu;
@@ -10,6 +14,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.PopupMenu;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -17,6 +22,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -27,6 +34,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
@@ -39,11 +47,17 @@ public class MainActivity extends AppCompatActivity {
     byte apprentice, assistant, bellTower;
     static final String SET_FILE_NAME = "settings.ser";
 
+    @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        NotificationReceiver.createNotificationChannel(this);
+
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NotificationReceiver.REQUEST_CODE);
 
         try {
             FileInputStream fis = openFileInput(SET_FILE_NAME);
@@ -59,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
             bellTower = assistant = apprentice = 0;
         }
 
+        while (!list.isEmpty() && list.get(0).time.isBefore(LocalDateTime.now(ZoneId.systemDefault())))
+            list.removeFirst();
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -72,15 +89,25 @@ public class MainActivity extends AppCompatActivity {
             MenuInflater inflater = menu.getMenuInflater();
             inflater.inflate(R.menu.settings_menu, menu.getMenu());
             menu.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == R.id.menu_set) return set();
-                if (item.getItemId() == R.id.menu_add) return add();
-                if (item.getItemId() == R.id.menu_bell_tower) return bellTower();
-                if (item.getItemId() == R.id.menu_building_potion) return buildingPotion();
-                if (item.getItemId() == R.id.menu_lab_potion) return labPotion();
+                int id = item.getItemId();
+                if (id == R.id.menu_set) return set();
+                if (id == R.id.menu_add) return add();
+                if (id == R.id.menu_bell_tower) return bellTower();
+                if (id == R.id.menu_building_potion) return buildingPotion();
+                if (id == R.id.menu_lab_potion) return labPotion();
+                if (id == R.id.menu_bellTower_potion) return bellTowerPotion();
                 return false;
             });
             menu.show();
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NotificationReceiver.REQUEST_CODE)
+            if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED)
+                Toast.makeText(this, "通知权限被拒绝，部分功能可能无法使用", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -130,6 +157,16 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    boolean bellTowerPotion() {
+        byte account = getAccount();
+        if (account == -1) return false;
+        for (Item item : list)
+            if (item.type == Item.TYPE_NIGHT && item.account == account)
+                item.time = accelerate(item.time, (byte) 30, (byte) 10);
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
     boolean applyApprentice(int pos) {
         Item it = list.get(pos);
         it.time = accelerate(it.time, (byte) 60, apprentice);
@@ -172,26 +209,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void editItemRes(Intent data) {
+        LocalDateTime t = Item.str2date(data.getStringExtra("time"));
+        if (t == null) {
+            Toast.makeText(this, "时间格式错误！", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (it != null) {
-            byte type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
-            it.setDate(data.getStringExtra("time"));
+            it.time = t;
             it.account = data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON;
             it.project = data.getStringExtra("project");
-            it.type = type;
-            adapter.notifyDataSetChanged();
+            it.type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
+            setNotificationAlarm(it);
             it = null;
         } else {
-            Item it = new Item(data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON, data.getStringExtra("project"), data.getStringExtra("time"), data.getByteExtra("type", Item.TYPE_HOME_BUILDING));
+            Item it = new Item(data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON, data.getStringExtra("project"), t, data.getByteExtra("type", Item.TYPE_HOME_BUILDING));
             int i = list.size();
             list.add(it);
             while (i-- > 0) {
-                Item t = list.get(i);
-                if (t.compareTo(it) <= 0) break;
-                list.set(i + 1, t);
+                Item k = list.get(i);
+                if (k.compareTo(it) <= 0) break;
+                list.set(i + 1, k);
             }
             list.set(i + 1, it);
-            adapter.notifyDataSetChanged();
+            setNotificationAlarm(it);
         }
+        adapter.notifyDataSetChanged();
     }
 
     /**
@@ -203,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
      * @return 加速后计划完成时间
      */
     static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         if (t == null || t.isBefore(now)) return t;
         int m = (int) ChronoUnit.MINUTES.between(now, t), n = len * mul;
         return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
@@ -253,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     byte getAccount() {
-        byte[] r = new byte[1];
+        final byte[] r = new byte[1];
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("选择账号");
         builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
@@ -266,5 +308,27 @@ public class MainActivity extends AppCompatActivity {
         });
         builder.create().show();
         return r[0];
+    }
+
+    /*@Override
+    protected void onResume() {
+        super.onResume();
+        if (list.isEmpty()) return;
+        Item it = list.get(0);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("content", it.getText());
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+    }*/
+
+    void setNotificationAlarm(Item it) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("content", it.getText());
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }
 }

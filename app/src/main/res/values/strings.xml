@@ -26,4 +26,5 @@
     <string name="bellTower_hint">时间输入格式：hmm</string>
     <string name="building_potion">建筑工人药水加速</string>
     <string name="lab_potion">研究药水加速</string>
+    <string name="bellTower_potion">时光钟楼药水加速</string>
 </resources>

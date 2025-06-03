@@ -7,6 +7,7 @@ import androidx.annotation.RequiresApi;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
@@ -28,13 +29,25 @@ public class Item implements Comparable<Item>, Serializable {
         setDate(time);
     }
 
+    public Item(byte account, String project, LocalDateTime time, byte type) {
+        this.account = account;
+        this.project = project;
+        this.type = type;
+        this.time = time;
+    }
+
     public byte account, type;
     public String project;
     public LocalDateTime time;
 
+    public static LocalDateTime str2date(String t) {
+        if (t == null) return null;
+        char[] a = t.toCharArray();
+        return a.length == 6 && Character.isDigit(a[0]) && Character.isDigit(a[1]) && Character.isDigit(a[2]) && Character.isDigit(a[3]) && Character.isDigit(a[4]) && Character.isDigit(a[5]) ? LocalDateTime.now(ZoneId.systemDefault()).plusDays((a[0] - '0') * 10 + a[1] - '0').plusHours((a[2] - '0') * 10 + a[3] - '0').plusMinutes((a[4] - '0') * 10 + a[5] - '0') : null;
+    }
+
     public void setDate(String t) {
-        if (t != null && t.length() > 5)
-            time = LocalDateTime.now().plusDays((t.charAt(0) - '0') * 10 + t.charAt(1) - '0').plusHours((t.charAt(2) - '0') * 10 + t.charAt(3) - '0' + 8).plusMinutes((t.charAt(4) - '0') * 10 + t.charAt(5) - '0');
+        time = str2date(t);
     }
 
     public String getTimeStr() {
@@ -42,7 +55,7 @@ public class Item implements Comparable<Item>, Serializable {
     }
 
     public String getText() {
-        return (account == ACC_DELTA ? "delta：" : "epsilon：") + project + " (" + TYPE_NAME[type] + ")";
+        return ACCOUNT_NAME[account] + "：" + project + " (" + TYPE_NAME[type] + ")";
     }
 
     @Override
