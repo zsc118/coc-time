@@ -178,8 +178,11 @@ public class MainActivity extends AppCompatActivity {
         byte account = getAccount();
         if (account == -1) return false;
         for (Item item : list)
-            if (item.type == Item.TYPE_NIGHT && item.account == account)
+            if (item.type == Item.TYPE_NIGHT && item.account == account) {
+                cancelNotificationAlarm(item);
                 item.time = accelerate(item.time, bellTower, (byte) 10);
+                setNotificationAlarm(item);
+            }
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -188,22 +191,29 @@ public class MainActivity extends AppCompatActivity {
         byte account = getAccount();
         if (account == -1) return false;
         for (Item item : list)
-            if (item.type == Item.TYPE_NIGHT && item.account == account)
+            if (item.type == Item.TYPE_NIGHT && item.account == account) {
+                cancelNotificationAlarm(item);
                 item.time = accelerate(item.time, (byte) 30, (byte) 10);
+                setNotificationAlarm(item);
+            }
         adapter.notifyDataSetChanged();
         return true;
     }
 
     boolean applyApprentice(int pos) {
         Item it = list.get(pos);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, apprentice);
+        setNotificationAlarm(it);
         adapter.notifyDataSetChanged();
         return true;
     }
 
     boolean applyAssistant(int pos) {
         Item it = list.get(pos);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, assistant);
+        setNotificationAlarm(it);
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -218,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     boolean del(int pos) {
-        list.remove(pos);
+        cancelNotificationAlarm(list.remove(pos));
         return true;
     }
 
@@ -238,6 +248,7 @@ public class MainActivity extends AppCompatActivity {
     void editItemRes(Intent data) {
         LocalDateTime t = Item.str2date(data.getStringExtra("time"));
         if (it != null) {
+            cancelNotificationAlarm(it);
             if (t != null) {
                 it.time = t;
                 int i = pos - 1;
@@ -383,8 +394,11 @@ public class MainActivity extends AppCompatActivity {
         byte account = getAccount();
         if (account == -1) return false;
         for (Item it : list)
-            if (it.type == Item.TYPE_HOME_BUILDING && it.account == account)
+            if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
+                cancelNotificationAlarm(it);
                 it.time = accelerate(it.time, (byte) 60, (byte) 10);
+                setNotificationAlarm(it);
+            }
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -393,8 +407,11 @@ public class MainActivity extends AppCompatActivity {
         byte account = getAccount();
         if (account == -1) return false;
         for (Item it : list)
-            if (it.type == Item.TYPE_HOME_LAB && it.account == account)
+            if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
+                cancelNotificationAlarm(it);
                 it.time = accelerate(it.time, (byte) 60, (byte) 24);
+                setNotificationAlarm(it);
+            }
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -428,12 +445,20 @@ public class MainActivity extends AppCompatActivity {
         alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }*/
 
-    void setNotificationAlarm(Item it) {
+    void setNotificationAlarm(@NonNull Item it) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+    }
+
+    void cancelNotificationAlarm(@NonNull Item it) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("content", it.getText());
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(pendingIntent);
     }
 }
