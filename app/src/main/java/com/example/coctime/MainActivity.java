@@ -1,5 +1,6 @@
 package com.example.coctime;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -7,6 +8,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.view.ContextMenu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -28,7 +31,9 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -47,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     byte apprentice, assistant, bellTower;
     int pos;
     static final String SET_FILE_NAME = "settings.ser";
+    static final String SET_FILE_DIR = "CocTimer";
+    static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3;
 
     @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @Override
@@ -58,9 +65,9 @@ public class MainActivity extends AppCompatActivity {
         NotificationReceiver.createNotificationChannel(this);
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NotificationReceiver.REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);
 
-        try {
+        /*try {
             FileInputStream fis = openFileInput(SET_FILE_NAME);
             ObjectInputStream ois = new ObjectInputStream(fis);
             list = (ArrayList<Item>) ois.readObject();
@@ -73,7 +80,9 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             list = new ArrayList<>();
             bellTower = assistant = apprentice = 0;
-        }
+        }*/
+        checkAndRequestStoragePermission();
+        load();
 
         while (!list.isEmpty() && list.get(0).time.isBefore(LocalDateTime.now(ZoneId.systemDefault())))
             list.removeFirst();
@@ -105,12 +114,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    void checkAndRequestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager())
+                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NotificationReceiver.REQUEST_CODE)
+        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
             if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED)
                 Toast.makeText(this, "通知权限被拒绝，部分功能可能无法使用", Toast.LENGTH_SHORT).show();
+        } else if (requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
+                load();
+            } else
+                Toast.makeText(this, "存储权限被拒绝，数据无法保存和加载", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -270,20 +294,76 @@ public class MainActivity extends AppCompatActivity {
         return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
     }
 
+    boolean checkStoragePermission() {
+        // return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            return Environment.isExternalStorageManager();
+        else
+            return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    void requestStoragePermission() {
+        requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
+    }
+
     boolean save() {
-        try {
-            FileOutputStream fos = openFileOutput(SET_FILE_NAME, MODE_PRIVATE);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
+        if (!checkStoragePermission()) {
+            requestStoragePermission();
+            return false;
+        }
+        File dir = new File(Environment.getExternalStorageDirectory(), SET_FILE_DIR);
+        if (!dir.exists())
+            if (!dir.mkdirs()) {
+                Toast.makeText(this, "创建存储目录失败", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        File file = new File(dir, SET_FILE_NAME);
+        //File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
+        try (FileOutputStream fos = new FileOutputStream(file);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeObject(list);
             oos.writeByte(apprentice);
             oos.writeByte(assistant);
             oos.writeByte(bellTower);
-            oos.close();
-            fos.close();
-        } catch (IOException ignored) {
+            Toast.makeText(this, "数据保存成功", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "数据保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
+    }
+
+    void load() {
+        if (!checkStoragePermission()) {
+            requestStoragePermission();
+            list = new ArrayList<>();
+            apprentice = assistant = bellTower = 0;
+            return;
+        }
+        File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
+        if (!file.exists()) {
+            list = new ArrayList<>();
+            apprentice = assistant = bellTower = 0;
+            return;
+        }
+        try (FileInputStream fis = new FileInputStream(file);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            list = (ArrayList<Item>) ois.readObject();
+            apprentice = ois.readByte();
+            assistant = ois.readByte();
+            bellTower = ois.readByte();
+            Toast.makeText(this, "数据加载成功", Toast.LENGTH_SHORT).show();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "文件未找到: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "文件读写错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "类未找到错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
