@@ -42,9 +42,9 @@ public class Item implements Comparable<Item>, Serializable {
     public LocalDateTime time;
 
     public static LocalDateTime str2date(String t) {
-        if (t == null) return null;
+        if (t == null||t.length()!=6) return null;
         char[] a = t.toCharArray();
-        return a.length == 6 && Character.isDigit(a[0]) && Character.isDigit(a[1]) && Character.isDigit(a[2]) && Character.isDigit(a[3]) && Character.isDigit(a[4]) && Character.isDigit(a[5]) ? LocalDateTime.now(ZoneId.systemDefault()).plusDays((a[0] - '0') * 10 + a[1] - '0').plusHours((a[2] - '0') * 10 + a[3] - '0').plusMinutes((a[4] - '0') * 10 + a[5] - '0') : null;
+        return Character.isDigit(a[0]) && Character.isDigit(a[1]) && Character.isDigit(a[2]) && Character.isDigit(a[3]) && Character.isDigit(a[4]) && Character.isDigit(a[5]) ? LocalDateTime.now(ZoneId.systemDefault()).plusDays((a[0] - '0') * 10 + a[1] - '0').plusHours((a[2] - '0') * 10 + a[3] - '0').plusMinutes((a[4] - '0') * 10 + a[5] - '0') : null;
     }
 
     public void setDate(String t) {

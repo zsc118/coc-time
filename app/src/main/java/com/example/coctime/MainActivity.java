@@ -38,6 +38,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -332,7 +333,13 @@ public class MainActivity extends AppCompatActivity {
         //File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
         try (FileOutputStream fos = new FileOutputStream(file);
              ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-            oos.writeObject(list);
+            //oos.writeObject(list);
+            oos.writeShort(list.size());
+            for (Item it : list) {
+                oos.writeByte(it.account << 2 | it.type);
+                oos.writeLong(it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                oos.writeUTF(it.project);
+            }
             oos.writeByte(apprentice);
             oos.writeByte(assistant);
             oos.writeByte(bellTower);
@@ -354,13 +361,22 @@ public class MainActivity extends AppCompatActivity {
         }
         File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
         if (!file.exists()) {
+            Toast.makeText(this, "未找到数据文件", Toast.LENGTH_SHORT).show();
             list = new ArrayList<>();
             apprentice = assistant = bellTower = 0;
             return;
         }
         try (FileInputStream fis = new FileInputStream(file);
              ObjectInputStream ois = new ObjectInputStream(fis)) {
-            list = (ArrayList<Item>) ois.readObject();
+            short n = ois.readShort();
+            list = new ArrayList<>(n + 10);
+            while (n != 0) {
+                byte t = ois.readByte();
+                long time = ois.readLong();
+                String project = ois.readUTF();
+                list.add(new Item((byte) (t >> 2), project, Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime(), (byte) (t & 3)));
+                n--;
+            }
             apprentice = ois.readByte();
             assistant = ois.readByte();
             bellTower = ois.readByte();
@@ -371,10 +387,10 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
             Toast.makeText(this, "文件读写错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        } catch (ClassNotFoundException e) {
+        }/*catch (ClassNotFoundException e) {
             e.printStackTrace();
             Toast.makeText(this, "类未找到错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+        }*/
     }
 
     @Override
