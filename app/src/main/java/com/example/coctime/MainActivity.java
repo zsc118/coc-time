@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     Item it;
     byte apprentice, assistant, bellTower;
     int pos;
-    static final String SET_FILE_NAME = "settings.ser";
+    static final String SET_FILE_NAME = "data";
     static final String SET_FILE_DIR = "CocTimer";
     static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3;
 
@@ -176,28 +176,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     boolean bellTower() {
-        byte account = getAccount();
-        if (account == -1) return false;
-        for (Item item : list)
-            if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                cancelNotificationAlarm(item);
-                item.time = accelerate(item.time, bellTower, (byte) 10);
-                setNotificationAlarm(item);
-            }
-        adapter.notifyDataSetChanged();
+        getAccount(account -> {
+            for (Item item : list)
+                if (item.type == Item.TYPE_NIGHT && item.account == account) {
+                    cancelNotificationAlarm(item);
+                    item.time = accelerate(item.time, bellTower, (byte) 10);
+                    setNotificationAlarm(item);
+                }
+            adapter.notifyDataSetChanged();
+        });
         return true;
     }
 
     boolean bellTowerPotion() {
-        byte account = getAccount();
-        if (account == -1) return false;
-        for (Item item : list)
-            if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                cancelNotificationAlarm(item);
-                item.time = accelerate(item.time, (byte) 30, (byte) 10);
-                setNotificationAlarm(item);
-            }
-        adapter.notifyDataSetChanged();
+        getAccount(account -> {
+            for (Item item : list)
+                if (item.type == Item.TYPE_NIGHT && item.account == account) {
+                    cancelNotificationAlarm(item);
+                    item.time = accelerate(item.time, (byte) 30, (byte) 10);
+                    setNotificationAlarm(item);
+                }
+            adapter.notifyDataSetChanged();
+        });
         return true;
     }
 
@@ -230,6 +230,7 @@ public class MainActivity extends AppCompatActivity {
 
     boolean del(int pos) {
         cancelNotificationAlarm(list.remove(pos));
+        adapter.notifyDataSetChanged();
         return true;
     }
 
@@ -356,14 +357,16 @@ public class MainActivity extends AppCompatActivity {
         if (!checkStoragePermission()) {
             requestStoragePermission();
             list = new ArrayList<>();
-            apprentice = assistant = bellTower = 0;
+            apprentice = assistant = 1;
+            bellTower = 0;
             return;
         }
         File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
         if (!file.exists()) {
             Toast.makeText(this, "未找到数据文件", Toast.LENGTH_SHORT).show();
             list = new ArrayList<>();
-            apprentice = assistant = bellTower = 0;
+            apprentice = assistant = 1;
+            bellTower = 0;
             return;
         }
         try (FileInputStream fis = new FileInputStream(file);
@@ -393,13 +396,13 @@ public class MainActivity extends AppCompatActivity {
         }*/
     }
 
-    @Override
+    /*@Override
     protected void onDestroy() {
         super.onDestroy();
         save();
     }
 
-    /*void showErrorDialog(String message) {
+    void showErrorDialog(String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("输入错误").setMessage(message).setPositiveButton("确定", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
@@ -407,45 +410,44 @@ public class MainActivity extends AppCompatActivity {
     }*/
 
     boolean buildingPotion() {
-        byte account = getAccount();
-        if (account == -1) return false;
-        for (Item it : list)
-            if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
-                cancelNotificationAlarm(it);
-                it.time = accelerate(it.time, (byte) 60, (byte) 10);
-                setNotificationAlarm(it);
-            }
-        adapter.notifyDataSetChanged();
+        getAccount(account -> {
+            for (Item it : list)
+                if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
+                    cancelNotificationAlarm(it);
+                    it.time = accelerate(it.time, (byte) 60, (byte) 10);
+                    setNotificationAlarm(it);
+                }
+            adapter.notifyDataSetChanged();
+        });
         return true;
     }
 
     boolean labPotion() {
-        byte account = getAccount();
-        if (account == -1) return false;
-        for (Item it : list)
-            if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
-                cancelNotificationAlarm(it);
-                it.time = accelerate(it.time, (byte) 60, (byte) 24);
-                setNotificationAlarm(it);
+        getAccount(account -> {
+            for (Item it : list) {
+                if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
+                    cancelNotificationAlarm(it);
+                    it.time = accelerate(it.time, (byte) 60, (byte) 24);
+                    setNotificationAlarm(it);
+                }
             }
-        adapter.notifyDataSetChanged();
+            adapter.notifyDataSetChanged();
+        });
         return true;
     }
 
-    byte getAccount() {
-        final byte[] r = new byte[1];
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("选择账号");
-        builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
-            r[0] = (byte) which;
-            dialog.dismiss();
-        });
-        builder.setNegativeButton("取消", (dialog, which) -> {
-            r[0] = -1;
-            dialog.dismiss();
-        });
-        builder.create().show();
-        return r[0];
+     void getAccount(AccountSelectionCallback callback) {
+         AlertDialog.Builder builder = new AlertDialog.Builder(this);
+         builder.setTitle("选择账号");
+         builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
+             callback.onAccountSelected((byte) which);
+             dialog.dismiss();
+         });
+         builder.setNegativeButton("取消", (dialog, which) -> {
+             //callback.onAccountSelected((byte) -1);
+             dialog.dismiss();
+         });
+         builder.create().show();
     }
 
     /*@Override
@@ -477,4 +479,8 @@ public class MainActivity extends AppCompatActivity {
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.cancel(pendingIntent);
     }
+}
+
+interface AccountSelectionCallback {
+    void onAccountSelected(byte account);
 }

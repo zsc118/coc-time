@@ -28,4 +28,7 @@
     <string name="lab_potion">研究药水加速</string>
     <string name="bellTower_potion">时光钟楼药水加速</string>
     <string name="save">保存</string>
+    <string name="apprentice_hint">请输入0~8之间的整数</string>
+    <string name="assistant_hint">请输入0~12之间的整数</string>
+    <string name="bellTower_level_hint">请输入0~32之间的整数</string>
 </resources>

@@ -21,7 +21,8 @@
         android:id="@+id/et_building_level"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:gravity="center_vertical" />
+        android:gravity="center_vertical"
+        android:hint="@string/apprentice_hint" />
 
     <TextView
         android:layout_width="match_parent"
@@ -38,7 +39,8 @@
         android:id="@+id/et_lab_level"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:gravity="center_vertical" />
+        android:gravity="center_vertical"
+        android:hint="@string/assistant_hint" />
 
     <TextView
         android:layout_width="match_parent"
@@ -55,7 +57,8 @@
         android:id="@+id/et_bell_tower"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
-        android:gravity="center_vertical" />
+        android:gravity="center_vertical"
+        android:hint="@string/bellTower_level_hint" />
 
     <LinearLayout
         android:layout_width="match_parent"
