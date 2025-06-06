@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     Adapter adapter;
     Item it;
     byte apprentice, assistant, bellTower;
-    int pos;
+    short pos;
     static final String SET_FILE_NAME = "data";
     static final String SET_FILE_DIR = "CocTimer";
     static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3;
@@ -150,15 +150,25 @@ public class MainActivity extends AppCompatActivity {
         assert info != null;
         int id = item.getItemId();
         if (id == R.id.menu_add) return add();
-        pos = info.position;
-        if (id == R.id.menu_edt) return edit(pos);
-        if (id == R.id.menu_del) return del(pos);
-        if (id == R.id.menu_apprentice) return applyApprentice(pos);
-        if (id == R.id.menu_assistant) return applyAssistant(pos);
+        pos = (short) info.position;
+        if (id == R.id.menu_edt) return edit();
+        if (id == R.id.menu_del) return del();
+        if (id == R.id.menu_apprentice) return applyApprentice();
+        if (id == R.id.menu_assistant) return applyAssistant();
         return super.onContextItemSelected(item);
     }
 
-    boolean edit(int pos) {
+    void resortForwardItem(short pos) {
+        Item it = list.get(pos);
+        short i = (short) (pos - 1);
+        if (pos > 0 && it.compareTo(list.get(i)) < 0) {
+            list.set(pos, list.get(i));
+            while (i-- > 0 && it.compareTo(list.get(i)) < 0) list.set(i + 1, list.get(i));
+            list.set(i + 1, it);
+        }
+    }
+
+    boolean edit() {
         Intent intent = new Intent(this, ItemEditActivity.class);
         if (pos < 0 || pos >= list.size()) return false;
         it = list.get(pos);
@@ -177,12 +187,15 @@ public class MainActivity extends AppCompatActivity {
 
     boolean bellTower() {
         getAccount(account -> {
-            for (Item item : list)
+            for (short i = 0, n = (short) list.size(); i != n; i++) {
+                Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
                     cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, bellTower, (byte) 10);
                     setNotificationAlarm(item);
+                    resortForwardItem(i);
                 }
+            }
             adapter.notifyDataSetChanged();
         });
         return true;
@@ -190,31 +203,36 @@ public class MainActivity extends AppCompatActivity {
 
     boolean bellTowerPotion() {
         getAccount(account -> {
-            for (Item item : list)
+            for (short i = 0, n = (short) list.size(); i != n; i++) {
+                Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
                     cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, (byte) 30, (byte) 10);
                     setNotificationAlarm(item);
+                    resortForwardItem(i);
                 }
+            }
             adapter.notifyDataSetChanged();
         });
         return true;
     }
 
-    boolean applyApprentice(int pos) {
+    boolean applyApprentice() {
         Item it = list.get(pos);
         cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, apprentice);
         setNotificationAlarm(it);
+        resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
     }
 
-    boolean applyAssistant(int pos) {
+    boolean applyAssistant() {
         Item it = list.get(pos);
         cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, assistant);
         setNotificationAlarm(it);
+        resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -228,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    boolean del(int pos) {
+    boolean del() {
         cancelNotificationAlarm(list.remove(pos));
         adapter.notifyDataSetChanged();
         return true;
@@ -253,14 +271,14 @@ public class MainActivity extends AppCompatActivity {
             cancelNotificationAlarm(it);
             if (t != null) {
                 it.time = t;
-                int i = pos - 1;
+                short i = (short) (pos - 1);
                 if (pos > 0 && it.compareTo(list.get(i)) < 0) {
                     list.set(pos, list.get(i));
                     while (i-- > 0 && it.compareTo(list.get(i)) < 0) list.set(i + 1, list.get(i));
                     list.set(i + 1, it);
                 } else {
-                    int n = list.size() - 1;
-                    if (pos < n && it.compareTo(list.get(i = pos + 1)) > 0) {
+                    short n = (short) (list.size() - 1);
+                    if (pos < n && it.compareTo(list.get(i = (short) (pos + 1))) > 0) {
                         list.set(pos, list.get(i));
                         while (i++ < n && it.compareTo(list.get(i)) > 0)
                             list.set(i - 1, list.get(i));
@@ -279,7 +297,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             Item it = new Item(data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON, data.getStringExtra("project"), t, data.getByteExtra("type", Item.TYPE_HOME_BUILDING));
-            int i = list.size();
+            short i = (short) list.size();
             list.add(it);
             while (i-- > 0) {
                 Item k = list.get(i);
@@ -411,24 +429,13 @@ public class MainActivity extends AppCompatActivity {
 
     boolean buildingPotion() {
         getAccount(account -> {
-            for (Item it : list)
+            for (short i = 0, n = (short) list.size(); i!=n; i++){
+                Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
                     cancelNotificationAlarm(it);
                     it.time = accelerate(it.time, (byte) 60, (byte) 10);
                     setNotificationAlarm(it);
-                }
-            adapter.notifyDataSetChanged();
-        });
-        return true;
-    }
-
-    boolean labPotion() {
-        getAccount(account -> {
-            for (Item it : list) {
-                if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
-                    cancelNotificationAlarm(it);
-                    it.time = accelerate(it.time, (byte) 60, (byte) 24);
-                    setNotificationAlarm(it);
+                    resortForwardItem(i);
                 }
             }
             adapter.notifyDataSetChanged();
@@ -436,18 +443,34 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-     void getAccount(AccountSelectionCallback callback) {
-         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-         builder.setTitle("选择账号");
-         builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
-             callback.onAccountSelected((byte) which);
-             dialog.dismiss();
-         });
-         builder.setNegativeButton("取消", (dialog, which) -> {
-             //callback.onAccountSelected((byte) -1);
-             dialog.dismiss();
-         });
-         builder.create().show();
+    boolean labPotion() {
+        getAccount(account -> {
+            for (short i = 0, n = (short) list.size(); i!=n; i++){
+                Item it = list.get(i);
+                if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
+                    cancelNotificationAlarm(it);
+                    it.time = accelerate(it.time, (byte) 60, (byte) 10);
+                    setNotificationAlarm(it);
+                    resortForwardItem(i);
+                }
+            }
+            adapter.notifyDataSetChanged();
+        });
+        return true;
+    }
+
+    void getAccount(AccountSelectionCallback callback) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择账号");
+        builder.setItems(Item.ACCOUNT_NAME, (dialog, which) -> {
+            callback.onAccountSelected((byte) which);
+            dialog.dismiss();
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> {
+            //callback.onAccountSelected((byte) -1);
+            dialog.dismiss();
+        });
+        builder.create().show();
     }
 
     /*@Override
