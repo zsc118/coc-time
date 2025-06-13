@@ -85,8 +85,7 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestStoragePermission();
         load();
 
-        while (!list.isEmpty() && list.get(0).time.isBefore(LocalDateTime.now(ZoneId.systemDefault())))
-            list.removeFirst();
+        //while (!list.isEmpty() && list.get(0).time.isBefore(LocalDateTime.now(ZoneId.systemDefault()))) list.removeFirst();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -169,8 +168,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     boolean edit() {
-        Intent intent = new Intent(this, ItemEditActivity.class);
         if (pos < 0 || pos >= list.size()) return false;
+        Intent intent = new Intent(this, ItemEditActivity.class);
         it = list.get(pos);
         intent.putExtra("account", it.account);
         intent.putExtra("isEdit", true);
