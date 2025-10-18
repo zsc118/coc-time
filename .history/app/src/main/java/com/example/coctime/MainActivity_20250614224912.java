@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     short pos;
     static final String SET_FILE_NAME = "data";
     static final String SET_FILE_DIR = "CocTimer";
-    static final int STORAGE_PERMISSION_CODE = 4/*, NOTIFICATION_PERMISSION_CODE = 3*/;
+    static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3;
 
     @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @Override
@@ -63,10 +63,10 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        /*NotificationReceiver.createNotificationChannel(this);
+        NotificationReceiver.createNotificationChannel(this);
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);*/
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);
 
         /*try {
             FileInputStream fis = openFileInput(SET_FILE_NAME);
@@ -125,10 +125,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        /*if (requestCode == NOTIFICATION_PERMISSION_CODE) {
+        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
             if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED)
                 Toast.makeText(this, "通知权限被拒绝，部分功能可能无法使用", Toast.LENGTH_SHORT).show();
-        } else*/ if (requestCode == STORAGE_PERMISSION_CODE) {
+        } else if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
                 load();
@@ -189,9 +189,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    //cancelNotificationAlarm(item);
+                    cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, bellTower, (byte) 10);
-                    //setNotificationAlarm(item);
+                    setNotificationAlarm(item);
                     resortForwardItem(i);
                 }
             }
@@ -205,9 +205,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    //cancelNotificationAlarm(item);
+                    cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, (byte) 30, (byte) 10);
-                    //setNotificationAlarm(item);
+                    setNotificationAlarm(item);
                     resortForwardItem(i);
                 }
             }
@@ -218,9 +218,9 @@ public class MainActivity extends AppCompatActivity {
 
     boolean applyApprentice() {
         Item it = list.get(pos);
-        //cancelNotificationAlarm(it);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, apprentice);
-        //setNotificationAlarm(it);
+        setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
@@ -228,9 +228,9 @@ public class MainActivity extends AppCompatActivity {
 
     boolean applyAssistant() {
         Item it = list.get(pos);
-        //cancelNotificationAlarm(it);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, assistant);
-        //setNotificationAlarm(it);
+        setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
@@ -246,8 +246,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     boolean del() {
-        list.remove(pos);
-        //cancelNotificationAlarm(list.remove(pos));
+        cancelNotificationAlarm(list.remove(pos));
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -263,12 +262,13 @@ public class MainActivity extends AppCompatActivity {
                 assistant = data.getByteExtra("lab", (byte) 0);
                 bellTower = data.getByteExtra("bellTower", (byte) 0);
             }
+        it = null;
     }
 
     void editItemRes(Intent data) {
         LocalDateTime t = Item.str2date(data.getStringExtra("time"));
         if (it != null) {
-            //cancelNotificationAlarm(it);
+            cancelNotificationAlarm(it);
             if (t != null) {
                 it.time = t;
                 short i = (short) (pos - 1);
@@ -289,8 +289,7 @@ public class MainActivity extends AppCompatActivity {
             it.account = data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON;
             it.project = data.getStringExtra("project");
             it.type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
-            //setNotificationAlarm(it);
-            it = null;
+            setNotificationAlarm(it);
         } else {
             if (t == null) {
                 Toast.makeText(this, "时间格式错误！", Toast.LENGTH_SHORT).show();
@@ -305,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
                 list.set(i + 1, k);
             }
             list.set(i + 1, it);
-            //setNotificationAlarm(it);
+            setNotificationAlarm(it);
         }
         adapter.notifyDataSetChanged();
     }
@@ -432,9 +431,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i!=n; i++){
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
-                    //cancelNotificationAlarm(it);
+                    cancelNotificationAlarm(it);
                     it.time = accelerate(it.time, (byte) 60, (byte) 10);
-                    //setNotificationAlarm(it);
+                    setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
             }
@@ -448,9 +447,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i!=n; i++){
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
-                    //cancelNotificationAlarm(it);
+                    cancelNotificationAlarm(it);
                     it.time = accelerate(it.time, (byte) 60, (byte) 10);
-                    //setNotificationAlarm(it);
+                    setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
             }
@@ -486,7 +485,7 @@ public class MainActivity extends AppCompatActivity {
         alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }*/
 
-    /*void setNotificationAlarm(@NonNull Item it) {
+    void setNotificationAlarm(@NonNull Item it) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
@@ -501,7 +500,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("content", it.getText());
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.cancel(pendingIntent);
-    }*/
+    }
 }
 
 interface AccountSelectionCallback {

@@ -1,5 +1,5 @@
 package com.example.coctime;
-
+/*
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -31,4 +31,4 @@ public class NotificationReceiver extends BroadcastReceiver {
         NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
         notificationManager.createNotificationChannel(channel);
     }
-}
+}*/
