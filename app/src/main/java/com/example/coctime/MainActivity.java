@@ -1,10 +1,12 @@
 package com.example.coctime;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -23,6 +25,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.annotation.RequiresPermission;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -54,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
     short pos;
     static final String SET_FILE_NAME = "data";
     static final String SET_FILE_DIR = "CocTimer";
-    static final int STORAGE_PERMISSION_CODE = 4/*, NOTIFICATION_PERMISSION_CODE = 3*/;
+    static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3, SCHEDULE_ALARM_PERMISSION_CODE = 5;
 
     @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @Override
@@ -63,10 +66,12 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        /*NotificationReceiver.createNotificationChannel(this);
+        NotificationReceiver.createNotificationChannel(this);
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);*/
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) checkScheduleExactAlarmPermission();
 
         /*try {
             FileInputStream fis = openFileInput(SET_FILE_NAME);
@@ -125,15 +130,34 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        /*if (requestCode == NOTIFICATION_PERMISSION_CODE) {
+        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
             if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED)
                 Toast.makeText(this, "通知权限被拒绝，部分功能可能无法使用", Toast.LENGTH_SHORT).show();
-        } else*/ if (requestCode == STORAGE_PERMISSION_CODE) {
+        } else if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show();
                 load();
             } else
                 Toast.makeText(this, "存储权限被拒绝，数据无法保存和加载", Toast.LENGTH_SHORT).show();
+        } else if (requestCode == SCHEDULE_ALARM_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "精确闹钟权限已授予，通知功能可以正常使用", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "精确闹钟权限被拒绝，通知可能无法在后台正常工作", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * 检查并请求精确闹钟权限
+     */
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void checkScheduleExactAlarmPermission() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (!alarmManager.canScheduleExactAlarms()) {
+            // 如果无法调度精确闹钟，提示用户并跳转到设置界面
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("需要精确闹钟权限").setMessage("为了确保在指定时间准确发送通知，请授予精确闹钟权限").setPositiveButton("去设置", (dialog, which) -> startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))).setNegativeButton("取消", null).create().show();
         }
     }
 
@@ -218,9 +242,9 @@ public class MainActivity extends AppCompatActivity {
 
     boolean applyApprentice() {
         Item it = list.get(pos);
-        //cancelNotificationAlarm(it);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, apprentice);
-        //setNotificationAlarm(it);
+        setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
@@ -228,9 +252,9 @@ public class MainActivity extends AppCompatActivity {
 
     boolean applyAssistant() {
         Item it = list.get(pos);
-        //cancelNotificationAlarm(it);
+        cancelNotificationAlarm(it);
         it.time = accelerate(it.time, (byte) 60, assistant);
-        //setNotificationAlarm(it);
+        setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         return true;
@@ -246,8 +270,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     boolean del() {
-        list.remove(pos);
-        //cancelNotificationAlarm(list.remove(pos));
+        //list.remove(pos);
+        cancelNotificationAlarm(list.remove(pos));
         adapter.notifyDataSetChanged();
         return true;
     }
@@ -268,7 +292,7 @@ public class MainActivity extends AppCompatActivity {
     void editItemRes(Intent data) {
         LocalDateTime t = Item.str2date(data.getStringExtra("time"));
         if (it != null) {
-            //cancelNotificationAlarm(it);
+            cancelNotificationAlarm(it);
             if (t != null) {
                 it.time = t;
                 short i = (short) (pos - 1);
@@ -289,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
             it.account = data.getBooleanExtra("account", true) ? Item.ACC_DELTA : Item.ACC_EPSILON;
             it.project = data.getStringExtra("project");
             it.type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
-            //setNotificationAlarm(it);
+            setNotificationAlarm(it);
             it = null;
         } else {
             if (t == null) {
@@ -305,7 +329,7 @@ public class MainActivity extends AppCompatActivity {
                 list.set(i + 1, k);
             }
             list.set(i + 1, it);
-            //setNotificationAlarm(it);
+            setNotificationAlarm(it);
         }
         adapter.notifyDataSetChanged();
     }
@@ -350,8 +374,8 @@ public class MainActivity extends AppCompatActivity {
             }
         File file = new File(dir, SET_FILE_NAME);
         //File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
-        try (FileOutputStream fos = new FileOutputStream(file);
-             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+        try (FileOutputStream fos = new FileOutputStream(file); ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeInt(NotificationReceiver.notificationId);
             //oos.writeObject(list);
             oos.writeShort(list.size());
             for (Item it : list) {
@@ -371,24 +395,27 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    void defaultInit() {
+        list = new ArrayList<>();
+        apprentice = assistant = 1;
+        bellTower = 0;
+        NotificationReceiver.notificationId = 0;
+    }
+
     void load() {
         if (!checkStoragePermission()) {
             requestStoragePermission();
-            list = new ArrayList<>();
-            apprentice = assistant = 1;
-            bellTower = 0;
+            defaultInit();
             return;
         }
         File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
         if (!file.exists()) {
             Toast.makeText(this, "未找到数据文件", Toast.LENGTH_SHORT).show();
-            list = new ArrayList<>();
-            apprentice = assistant = 1;
-            bellTower = 0;
+            defaultInit();
             return;
         }
-        try (FileInputStream fis = new FileInputStream(file);
-             ObjectInputStream ois = new ObjectInputStream(fis)) {
+        try (FileInputStream fis = new FileInputStream(file); ObjectInputStream ois = new ObjectInputStream(fis)) {
+            NotificationReceiver.notificationId = ois.readInt();
             short n = ois.readShort();
             list = new ArrayList<>(n + 10);
             while (n != 0) {
@@ -429,7 +456,7 @@ public class MainActivity extends AppCompatActivity {
 
     boolean buildingPotion() {
         getAccount(account -> {
-            for (short i = 0, n = (short) list.size(); i!=n; i++){
+            for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
                     //cancelNotificationAlarm(it);
@@ -445,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
 
     boolean labPotion() {
         getAccount(account -> {
-            for (short i = 0, n = (short) list.size(); i!=n; i++){
+            for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
                     //cancelNotificationAlarm(it);
@@ -486,22 +513,52 @@ public class MainActivity extends AppCompatActivity {
         alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }*/
 
-    /*void setNotificationAlarm(@NonNull Item it) {
+    @RequiresPermission(Manifest.permission.SCHEDULE_EXACT_ALARM)
+    void setNotificationAlarm(@NonNull Item it) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        //checkDeviceManufacturerAndShowNotification();
+
+        // 检查是否可以调度精确闹钟(Android 12及以上版本需要)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            Toast.makeText(this, "没有精确闹钟权限，通知可能无法准时发送", Toast.LENGTH_SHORT).show();
+            // 尝试使用备用方法
+            Intent intent = new Intent(this, NotificationReceiver.class);
+            intent.putExtra("content", it.getText());
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+            AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(triggerTime, pendingIntent);
+            try {
+                alarmManager.setAlarmClock(alarmClockInfo, pendingIntent);
+            } catch (SecurityException e) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+            }
+            return;
+        }
+
+        // 正常情况下设置精确闹钟
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+        //alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }
 
     void cancelNotificationAlarm(@NonNull Item it) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         alarmManager.cancel(pendingIntent);
-    }*/
+    }
 }
 
 interface AccountSelectionCallback {
