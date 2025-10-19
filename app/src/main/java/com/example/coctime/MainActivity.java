@@ -213,9 +213,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    //cancelNotificationAlarm(item);
+                    cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, bellTower, (byte) 10);
-                    //setNotificationAlarm(item);
+                    setNotificationAlarm(item);
                     resortForwardItem(i);
                 }
             }
@@ -229,9 +229,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    //cancelNotificationAlarm(item);
+                    cancelNotificationAlarm(item);
                     item.time = accelerate(item.time, (byte) 30, (byte) 10);
-                    //setNotificationAlarm(item);
+                    setNotificationAlarm(item);
                     resortForwardItem(i);
                 }
             }
@@ -376,7 +376,6 @@ public class MainActivity extends AppCompatActivity {
         //File file = new File(Environment.getExternalStorageDirectory() + File.separator + SET_FILE_DIR, SET_FILE_NAME);
         try (FileOutputStream fos = new FileOutputStream(file); ObjectOutputStream oos = new ObjectOutputStream(fos)) {
             oos.writeInt(NotificationReceiver.notificationId);
-            //oos.writeObject(list);
             oos.writeShort(list.size());
             for (Item it : list) {
                 oos.writeByte(it.account << 2 | it.type);
@@ -459,9 +458,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
-                    //cancelNotificationAlarm(it);
+                    cancelNotificationAlarm(it);
                     it.time = accelerate(it.time, (byte) 60, (byte) 10);
-                    //setNotificationAlarm(it);
+                    setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
             }
@@ -475,9 +474,9 @@ public class MainActivity extends AppCompatActivity {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
-                    //cancelNotificationAlarm(it);
+                    cancelNotificationAlarm(it);
                     it.time = accelerate(it.time, (byte) 60, (byte) 10);
-                    //setNotificationAlarm(it);
+                    setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
             }
