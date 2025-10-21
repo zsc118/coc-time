@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     static final String SET_FILE_NAME = "data";
     static final String SET_FILE_DIR = "CocTimer";
     static final int STORAGE_PERMISSION_CODE = 4, NOTIFICATION_PERMISSION_CODE = 3, SCHEDULE_ALARM_PERMISSION_CODE = 5;
+    AlarmManager alarmManager;
 
     @RequiresApi(api = Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @Override
@@ -65,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
         NotificationReceiver.createNotificationChannel(this);
 
@@ -113,6 +116,7 @@ public class MainActivity extends AppCompatActivity {
                 if (id == R.id.menu_lab_potion) return labPotion();
                 if (id == R.id.menu_bellTower_potion) return bellTowerPotion();
                 if (id == R.id.menu_save) return save();
+                if (id == R.id.menu_refreshNotification) return refreshNotifications();
                 return false;
             });
             menu.show();
@@ -153,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
      */
     @RequiresApi(api = Build.VERSION_CODES.S)
     private void checkScheduleExactAlarmPermission() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         if (!alarmManager.canScheduleExactAlarms()) {
             // 如果无法调度精确闹钟，提示用户并跳转到设置界面
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -165,6 +168,12 @@ public class MainActivity extends AppCompatActivity {
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         getMenuInflater().inflate(R.menu.list_item_menu, menu);
+        if (menuInfo instanceof AdapterView.AdapterContextMenuInfo) {
+            byte type = list.get(((AdapterView.AdapterContextMenuInfo) menuInfo).position).type;
+            if (type != Item.TYPE_HOME_BUILDING)
+                menu.findItem(R.id.menu_apprentice).setVisible(false);
+            if (type != Item.TYPE_HOME_LAB) menu.findItem(R.id.menu_assistant).setVisible(false);
+        }
     }
 
     @Override
@@ -504,7 +513,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (list.isEmpty()) return;
         Item it = list.get(0);
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -514,8 +522,6 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresPermission(Manifest.permission.SCHEDULE_EXACT_ALARM)
     void setNotificationAlarm(@NonNull Item it) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-
         //checkDeviceManufacturerAndShowNotification();
 
         // 检查是否可以调度精确闹钟(Android 12及以上版本需要)
@@ -550,13 +556,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void cancelNotificationAlarm(@NonNull Item it) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
         intent.putExtra("content", it.getText());
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         alarmManager.cancel(pendingIntent);
+    }
+
+    boolean refreshNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Toast.makeText(this, "重置通知失败!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        alarmManager.cancelAll();
+        removeExpiredItems();
+        for (Item it : list) setNotificationAlarm(it);
+        Toast.makeText(this, "重置通知成功!", Toast.LENGTH_SHORT).show();
+        return true;
+    }
+
+    void removeExpiredItems() {
+        LocalDateTime t0 = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(1);
+        while (!list.isEmpty() && list.get(0).time.isBefore(t0)) list.remove(0);
+        adapter.notifyDataSetChanged();
     }
 }
 

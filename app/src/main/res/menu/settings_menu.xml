@@ -7,4 +7,5 @@
     <item android:id="@+id/menu_lab_potion" android:title="@string/lab_potion"/>
     <item android:id="@+id/menu_bellTower_potion" android:title="@string/bellTower_potion"/>
     <item android:id="@+id/menu_save" android:title="@string/save"/>
+    <item android:id="@+id/menu_refreshNotification" android:title="@string/refreshAllNotifications"/>
 </menu>
