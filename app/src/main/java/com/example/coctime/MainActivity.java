@@ -286,8 +286,8 @@ public class MainActivity extends AppCompatActivity {
             if (requestCode == 1)
                 editItemRes(data);
             else {
-                apprentice = data.getByteExtra("building", (byte) 0);
-                assistant = data.getByteExtra("lab", (byte) 0);
+                apprentice = data.getByteExtra("building", (byte) 1);
+                assistant = data.getByteExtra("lab", (byte) 1);
                 bellTower = data.getByteExtra("bellTower", (byte) 0);
             }
     }
