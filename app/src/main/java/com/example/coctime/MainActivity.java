@@ -1,12 +1,10 @@
 package com.example.coctime;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,10 +39,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
 @RequiresApi(api = Build.VERSION_CODES.O)
@@ -299,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void editItemRes(Intent data) {
-        LocalDateTime t = Item.str2date(data.getStringExtra("time"));
+        Time t = Time.getByLag(data.getStringExtra("time"));
         if (it != null) {
             cancelNotificationAlarm(it);
             if (t != null) {
@@ -351,11 +345,18 @@ public class MainActivity extends AppCompatActivity {
      * @param mul 加速器倍率
      * @return 加速后计划完成时间
      */
-    static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
+    /*static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         if (t == null || t.isBefore(now)) return t;
         int m = (int) ChronoUnit.MINUTES.between(now, t), n = len * mul;
         return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
+    }*/
+    static Time accelerate(Time t, byte len, byte mul) {
+        if (t == null) return null;
+        Time t0 = Time.getCurrent();
+        if (t.compareTo(t0) <= 0) return t;
+        int m = Time.minutesBetween(t0, t), n = len * mul;
+        return m < n ? t0.plus((int) ((double) m / mul)) : t.minus(n - len);
     }
 
     boolean checkStoragePermission() {
@@ -388,7 +389,8 @@ public class MainActivity extends AppCompatActivity {
             oos.writeShort(list.size());
             for (Item it : list) {
                 oos.writeByte(it.account << 2 | it.type);
-                oos.writeLong(it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                //oos.writeLong(it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                oos.writeInt(it.time.data);
                 oos.writeUTF(it.project);
             }
             oos.writeByte(apprentice);
@@ -428,9 +430,10 @@ public class MainActivity extends AppCompatActivity {
             list = new ArrayList<>(n + 10);
             while (n != 0) {
                 byte t = ois.readByte();
-                long time = ois.readLong();
+                int time = ois.readInt();
                 String project = ois.readUTF();
-                list.add(new Item((byte) (t >> 2), project, Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime(), (byte) (t & 3)));
+                //list.add(new Item((byte) (t >> 2), project, Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime(), (byte) (t & 3)));
+                list.add(new Item((byte) (t >> 2), project, new Time(time), (byte) (t & 3)));
                 n--;
             }
             apprentice = ois.readByte();
@@ -532,13 +535,13 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("content", it.getText());
             PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            //long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
-            AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(triggerTime, pendingIntent);
+            AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(it.time.toMillis(), pendingIntent);
             try {
                 alarmManager.setAlarmClock(alarmClockInfo, pendingIntent);
             } catch (SecurityException e) {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+                alarmManager.set(AlarmManager.RTC_WAKEUP, it.time.toMillis(), pendingIntent);
             }
             return;
         }
@@ -549,9 +552,9 @@ public class MainActivity extends AppCompatActivity {
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, it.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        //long triggerTime = it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, it.time.toMillis(), pendingIntent);
         //alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
     }
 
@@ -577,8 +580,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void removeExpiredItems() {
-        LocalDateTime t0 = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(1);
-        while (!list.isEmpty() && list.get(0).time.isBefore(t0)) list.remove(0);
+        //LocalDateTime t0 = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(1);
+        Time t0 = Time.getCurrent();
+        while (!list.isEmpty() && list.get(0).time.compareTo(t0) <= 0) list.remove(0);
         adapter.notifyDataSetChanged();
     }
 }
