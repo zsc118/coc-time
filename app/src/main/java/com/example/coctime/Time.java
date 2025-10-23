@@ -100,8 +100,8 @@ public class Time implements Comparable<Time> {
         return new Time(Calendar.getInstance());
     }
 
-    public static int minutesBetween(Time t1,Time t2) {
-        return (int) ((t2.toMillis()-t1.toMillis())/60000L);
+    public static int minutesBetween(Time t1, Time t2) {
+        return (int) ((t2.toMillis() - t1.toMillis()) / 60000L);
     }
 
     @Override

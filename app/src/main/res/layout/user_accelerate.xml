@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/accelerateLen"
+        android:textSize="20sp" />
+
+
+    <EditText
+        android:id="@+id/et_accelerateLen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/accelerateLenHint"
+        android:inputType="number" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/accelerateSpeed"
+        android:textSize="20sp" />
+
+    <EditText
+        android:id="@+id/et_accelerateSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/accelerateSpeedHint"
+        android:inputType="number" />
+
+</LinearLayout>

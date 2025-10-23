@@ -32,7 +32,7 @@ public class Item implements Comparable<Item>, Serializable {
         this.account = account;
         this.project = project;
         this.type = type;
-        this.time=Time.getByLag(time);
+        this.time = Time.getByLag(time);
     }
 
     public Item(byte account, String project, Time time, byte type) {
@@ -69,7 +69,7 @@ public class Item implements Comparable<Item>, Serializable {
 
     @Override
     public int hashCode() {
-        return (account << 2 | type) ^ project.hashCode() ^ time.hashCode();
+        return (account << 31 | type << 29 | time.data) ^ project.hashCode();
     }
 
     @Override

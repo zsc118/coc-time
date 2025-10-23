@@ -1,6 +1,7 @@
 package com.example.coctime;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -15,6 +16,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.Toast;
@@ -179,6 +181,7 @@ public class MainActivity extends AppCompatActivity {
         pos = (short) info.position;
         if (id == R.id.menu_edt) return edit();
         if (id == R.id.menu_del) return del();
+        if (id == R.id.menu_accelerate) return userAccelerate();
         if (id == R.id.menu_apprentice) return applyApprentice();
         if (id == R.id.menu_assistant) return applyAssistant();
         return super.onContextItemSelected(item);
@@ -223,6 +226,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             adapter.notifyDataSetChanged();
+            Toast.makeText(this, "时光钟楼加速成功!", Toast.LENGTH_SHORT).show();
         });
         return true;
     }
@@ -239,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             adapter.notifyDataSetChanged();
+            Toast.makeText(this, "时光钟楼药水加速成功!", Toast.LENGTH_SHORT).show();
         });
         return true;
     }
@@ -250,6 +255,7 @@ public class MainActivity extends AppCompatActivity {
         setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
+        Toast.makeText(this, "建筑工人学徒加速成功!", Toast.LENGTH_SHORT).show();
         return true;
     }
 
@@ -260,6 +266,34 @@ public class MainActivity extends AppCompatActivity {
         setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
+        Toast.makeText(this, "实验助手加速成功!", Toast.LENGTH_SHORT).show();
+        return true;
+    }
+
+    boolean userAccelerate() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        @SuppressLint("InflateParams") View dialogView = getLayoutInflater().inflate(R.layout.user_accelerate, null);
+        EditText et_len = dialogView.findViewById(R.id.et_accelerateLen), et_speed = dialogView.findViewById(R.id.et_accelerateSpeed);
+        builder.setView(dialogView).setPositiveButton("确定", (dialog, which) -> {
+            try {
+                byte len = Byte.parseByte(et_len.getText().toString()), mul = Byte.parseByte(et_speed.getText().toString());
+                if (len < 1 || mul < 2) {
+                    Toast.makeText(this, "输入的数据不正确!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Item it = list.get(pos);
+                cancelNotificationAlarm(it);
+                it.time = accelerate(it.time, len, mul);
+                setNotificationAlarm(it);
+                resortForwardItem(pos);
+                adapter.notifyDataSetChanged();
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "输入的数据不正确!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Toast.makeText(this, "自定义加速成功!", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }).setNegativeButton("取消", (dialog, which) -> dialog.dismiss()).create().show();
         return true;
     }
 
@@ -276,6 +310,7 @@ public class MainActivity extends AppCompatActivity {
         //list.remove(pos);
         cancelNotificationAlarm(list.remove(pos));
         adapter.notifyDataSetChanged();
+        Toast.makeText(this, "删除成功!", Toast.LENGTH_SHORT).show();
         return true;
     }
 
@@ -289,6 +324,7 @@ public class MainActivity extends AppCompatActivity {
                 apprentice = data.getByteExtra("building", (byte) 1);
                 assistant = data.getByteExtra("lab", (byte) 1);
                 bellTower = data.getByteExtra("bellTower", (byte) 0);
+                Toast.makeText(this, "设置成功!", Toast.LENGTH_SHORT).show();
             }
     }
 
@@ -318,6 +354,7 @@ public class MainActivity extends AppCompatActivity {
             it.type = data.getByteExtra("type", Item.TYPE_HOME_BUILDING);
             setNotificationAlarm(it);
             it = null;
+            Toast.makeText(this, "编辑成功!", Toast.LENGTH_SHORT).show();
         } else {
             if (t == null) {
                 Toast.makeText(this, "时间格式错误！", Toast.LENGTH_SHORT).show();
@@ -333,6 +370,7 @@ public class MainActivity extends AppCompatActivity {
             }
             list.set(i + 1, it);
             setNotificationAlarm(it);
+            Toast.makeText(this, "添加成功!", Toast.LENGTH_SHORT).show();
         }
         adapter.notifyDataSetChanged();
     }
@@ -345,12 +383,6 @@ public class MainActivity extends AppCompatActivity {
      * @param mul 加速器倍率
      * @return 加速后计划完成时间
      */
-    /*static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
-        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
-        if (t == null || t.isBefore(now)) return t;
-        int m = (int) ChronoUnit.MINUTES.between(now, t), n = len * mul;
-        return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
-    }*/
     static Time accelerate(Time t, byte len, byte mul) {
         if (t == null) return null;
         Time t0 = Time.getCurrent();
@@ -358,6 +390,12 @@ public class MainActivity extends AppCompatActivity {
         int m = Time.minutesBetween(t0, t), n = len * mul;
         return m < n ? t0.plus((int) ((double) m / mul)) : t.minus(n - len);
     }
+    /*static LocalDateTime accelerate(LocalDateTime t, byte len, byte mul) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+        if (t == null || t.isBefore(now)) return t;
+        int m = (int) ChronoUnit.MINUTES.between(now, t), n = len * mul;
+        return m < n ? now.plusMinutes((long) ((double) m / mul)) : t.minusMinutes(n - len);
+    }*/
 
     boolean checkStoragePermission() {
         // return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
@@ -398,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
             oos.writeByte(bellTower);
             Toast.makeText(this, "数据保存成功", Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             Toast.makeText(this, "数据保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -441,10 +479,10 @@ public class MainActivity extends AppCompatActivity {
             bellTower = ois.readByte();
             Toast.makeText(this, "数据加载成功", Toast.LENGTH_SHORT).show();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             Toast.makeText(this, "文件未找到: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             Toast.makeText(this, "文件读写错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }/*catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -477,6 +515,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             adapter.notifyDataSetChanged();
+            Toast.makeText(this, Item.ACCOUNT_NAME[account] + "的建筑工人药水加速成功!", Toast.LENGTH_SHORT).show();
         });
         return true;
     }
@@ -493,6 +532,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             adapter.notifyDataSetChanged();
+            Toast.makeText(this, Item.ACCOUNT_NAME[account] + "的研究药水加速成功!", Toast.LENGTH_SHORT).show();
         });
         return true;
     }
@@ -525,6 +565,8 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresPermission(Manifest.permission.SCHEDULE_EXACT_ALARM)
     void setNotificationAlarm(@NonNull Item it) {
+        if (it.time.compareTo(Time.getCurrent()) <= 0) return;
+
         //checkDeviceManufacturerAndShowNotification();
 
         // 检查是否可以调度精确闹钟(Android 12及以上版本需要)

@@ -32,4 +32,9 @@
     <string name="assistant_hint">请输入0~12之间的整数</string>
     <string name="bellTower_level_hint">请输入0~32之间的整数</string>
     <string name="refreshAllNotifications">刷新所有通知</string>
+    <string name="customAccelerate">自定义加速</string>
+    <string name="accelerateLen">加速时长</string>
+    <string name="accelerateSpeed">加速倍率</string>
+    <string name="accelerateLenHint">加速的分钟数: 1 ~ 127</string>
+    <string name="accelerateSpeedHint">加速的倍率: 2 ~ 127</string>
 </resources>
