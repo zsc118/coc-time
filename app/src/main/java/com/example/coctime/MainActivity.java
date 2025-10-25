@@ -148,9 +148,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 检查并请求精确闹钟权限
-     */
+    // 检查并请求精确闹钟权限
     @RequiresApi(api = Build.VERSION_CODES.S)
     private void checkScheduleExactAlarmPermission() {
         if (!alarmManager.canScheduleExactAlarms()) {
@@ -237,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 Item item = list.get(i);
                 if (item.type == Item.TYPE_NIGHT && item.account == account) {
                     cancelNotificationAlarm(item);
-                    item.time = accelerate(item.time, (byte) 30, (byte) 10);
+                    item.time = accelerate(item.time, (short) 30, (byte) 10);
                     setNotificationAlarm(item);
                     resortForwardItem(i);
                 }
@@ -251,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
     boolean applyApprentice() {
         Item it = list.get(pos);
         cancelNotificationAlarm(it);
-        it.time = accelerate(it.time, (byte) 60, apprentice);
+        it.time = accelerate(it.time, (short) 60, apprentice);
         setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
@@ -262,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
     boolean applyAssistant() {
         Item it = list.get(pos);
         cancelNotificationAlarm(it);
-        it.time = accelerate(it.time, (byte) 60, assistant);
+        it.time = accelerate(it.time, (short) 60, assistant);
         setNotificationAlarm(it);
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
@@ -276,7 +274,8 @@ public class MainActivity extends AppCompatActivity {
         EditText et_len = dialogView.findViewById(R.id.et_accelerateLen), et_speed = dialogView.findViewById(R.id.et_accelerateSpeed);
         builder.setView(dialogView).setPositiveButton("确定", (dialog, which) -> {
             try {
-                byte len = Byte.parseByte(et_len.getText().toString()), mul = Byte.parseByte(et_speed.getText().toString());
+                byte mul = Byte.parseByte(et_speed.getText().toString());
+                short len = Short.parseShort(et_len.getText().toString());
                 if (len < 1 || mul < 2) {
                     Toast.makeText(this, "输入的数据不正确!", Toast.LENGTH_SHORT).show();
                     return;
@@ -383,7 +382,7 @@ public class MainActivity extends AppCompatActivity {
      * @param mul 加速器倍率
      * @return 加速后计划完成时间
      */
-    static Time accelerate(Time t, byte len, byte mul) {
+    static Time accelerate(Time t, short len, byte mul) {
         if (t == null) return null;
         Time t0 = Time.getCurrent();
         if (t.compareTo(t0) <= 0) return t;
@@ -426,9 +425,9 @@ public class MainActivity extends AppCompatActivity {
             oos.writeInt(NotificationReceiver.notificationId);
             oos.writeShort(list.size());
             for (Item it : list) {
-                oos.writeByte(it.account << 2 | it.type);
+                //oos.writeByte(it.account << 2 | it.type);
                 //oos.writeLong(it.time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
-                oos.writeInt(it.time.data);
+                oos.writeInt(it.account << 31 | it.type << 29 | it.time.data);
                 oos.writeUTF(it.project);
             }
             oos.writeByte(apprentice);
@@ -467,11 +466,11 @@ public class MainActivity extends AppCompatActivity {
             short n = ois.readShort();
             list = new ArrayList<>(n + 10);
             while (n != 0) {
-                byte t = ois.readByte();
-                int time = ois.readInt();
+                //byte t = ois.readByte();
+                int t = ois.readInt();
                 String project = ois.readUTF();
                 //list.add(new Item((byte) (t >> 2), project, Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime(), (byte) (t & 3)));
-                list.add(new Item((byte) (t >> 2), project, new Time(time), (byte) (t & 3)));
+                list.add(new Item((byte) (t >>> 31), project, new Time(t & 0x1fffffff), (byte) (t >>> 29 & 3)));
                 n--;
             }
             apprentice = ois.readByte();
@@ -509,7 +508,7 @@ public class MainActivity extends AppCompatActivity {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
                     cancelNotificationAlarm(it);
-                    it.time = accelerate(it.time, (byte) 60, (byte) 10);
+                    it.time = accelerate(it.time, (short) 60, (byte) 10);
                     setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
@@ -526,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
                 Item it = list.get(i);
                 if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
                     cancelNotificationAlarm(it);
-                    it.time = accelerate(it.time, (byte) 60, (byte) 10);
+                    it.time = accelerate(it.time, (short) 60, (byte) 24);
                     setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
