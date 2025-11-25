@@ -37,4 +37,8 @@
     <string name="accelerateSpeed">加速倍率</string>
     <string name="accelerateLenHint">加速的分钟数: 1 ~ 32767</string>
     <string name="accelerateSpeedHint">加速的倍率: 2 ~ 127</string>
+    <string name="buildersFeast">使用建筑工人大餐</string>
+    <string name="studySoup">使用研究浓汤</string>
+    <string name="customGlobalAcc">自定义全局加速</string>
+    <string name="clear">清空</string>
 </resources>

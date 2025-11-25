@@ -107,12 +107,22 @@ public class MainActivity extends AppCompatActivity {
                 int id = item.getItemId();
                 if (id == R.id.menu_set) return set();
                 if (id == R.id.menu_add) return add();
-                if (id == R.id.menu_bell_tower) return bellTower();
-                if (id == R.id.menu_building_potion) return buildingPotion();
-                if (id == R.id.menu_lab_potion) return labPotion();
-                if (id == R.id.menu_bellTower_potion) return bellTowerPotion();
+                if (id == R.id.menu_bell_tower)
+                    return globalAccurate(Item.TYPE_NIGHT, bellTower, (byte) 10, "时光钟楼");
                 if (id == R.id.menu_save) return save();
+                if (id == R.id.menu_lab_potion)
+                    return globalAccurate(Item.TYPE_HOME_LAB, (short) 60, (byte) 24, "研究药水");
                 if (id == R.id.menu_refreshNotification) return refreshNotifications();
+                if (id == R.id.menu_building_potion)
+                    return globalAccurate(Item.TYPE_HOME_BUILDING, (short) 60, (byte) 10, "建筑工人药水");
+                if (id == R.id.menu_bellTower_potion)
+                    return globalAccurate(Item.TYPE_NIGHT, (short) 30, (byte) 10, "时光钟楼药水");
+                if (id == R.id.menu_buildersFeast)
+                    return globalAccurate(Item.TYPE_HOME_BUILDING, (short) 60, (byte) 2, "建筑工人大餐");
+                if (id == R.id.menu_studySoup)
+                    return globalAccurate(Item.TYPE_HOME_LAB, (short) 60, (byte) 4, "研究浓汤");
+                if (id == R.id.menu_clearAll) return clearAll();
+                if (id == R.id.menu_globalAcc) return userGlobalAcc();
                 return false;
             });
             menu.show();
@@ -170,6 +180,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    boolean clearAll() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Toast.makeText(this, "清除通知失败!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        alarmManager.cancelAll();
+        list.clear();
+        adapter.notifyDataSetChanged();
+        return true;
+    }
+
     @Override
     public boolean onContextItemSelected(@NonNull MenuItem item) {
         AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
@@ -212,40 +233,6 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    boolean bellTower() {
-        getAccount(account -> {
-            for (short i = 0, n = (short) list.size(); i != n; i++) {
-                Item item = list.get(i);
-                if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    cancelNotificationAlarm(item);
-                    item.time = accelerate(item.time, bellTower, (byte) 10);
-                    setNotificationAlarm(item);
-                    resortForwardItem(i);
-                }
-            }
-            adapter.notifyDataSetChanged();
-            Toast.makeText(this, "时光钟楼加速成功!", Toast.LENGTH_SHORT).show();
-        });
-        return true;
-    }
-
-    boolean bellTowerPotion() {
-        getAccount(account -> {
-            for (short i = 0, n = (short) list.size(); i != n; i++) {
-                Item item = list.get(i);
-                if (item.type == Item.TYPE_NIGHT && item.account == account) {
-                    cancelNotificationAlarm(item);
-                    item.time = accelerate(item.time, (short) 30, (byte) 10);
-                    setNotificationAlarm(item);
-                    resortForwardItem(i);
-                }
-            }
-            adapter.notifyDataSetChanged();
-            Toast.makeText(this, "时光钟楼药水加速成功!", Toast.LENGTH_SHORT).show();
-        });
-        return true;
-    }
-
     boolean applyApprentice() {
         Item it = list.get(pos);
         cancelNotificationAlarm(it);
@@ -265,6 +252,33 @@ public class MainActivity extends AppCompatActivity {
         resortForwardItem(pos);
         adapter.notifyDataSetChanged();
         Toast.makeText(this, "实验助手加速成功!", Toast.LENGTH_SHORT).show();
+        return true;
+    }
+
+    boolean userGlobalAcc() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        @SuppressLint("InflateParams") View dialogView = getLayoutInflater().inflate(R.layout.user_accelerate, null);
+        EditText et_len = dialogView.findViewById(R.id.et_accelerateLen), et_speed = dialogView.findViewById(R.id.et_accelerateSpeed);
+        builder.setView(dialogView).setPositiveButton("确定", (dialog, which) -> {
+            try {
+                byte mul = Byte.parseByte(et_speed.getText().toString());
+                short len = Short.parseShort(et_len.getText().toString());
+                if (len < 1 || mul < 2) {
+                    Toast.makeText(this, "输入的数据不正确!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                for (Item it : list) it.time = accelerate(it.time, len, mul);
+                if (refreshWithoutHint()) {
+                    Toast.makeText(this, "自定义全局加速成功", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(this, "清除通知失败!", Toast.LENGTH_SHORT).show();
+                list.clear();
+                adapter.notifyDataSetChanged();
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "输入的数据不正确!", Toast.LENGTH_SHORT).show();
+            }
+        }).setNegativeButton("取消", (dialog, which) -> dialog.dismiss()).create().show();
         return true;
     }
 
@@ -479,9 +493,11 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "数据加载成功", Toast.LENGTH_SHORT).show();
         } catch (FileNotFoundException e) {
             //e.printStackTrace();
+            defaultInit();
             Toast.makeText(this, "文件未找到: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             //e.printStackTrace();
+            defaultInit();
             Toast.makeText(this, "文件读写错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }/*catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -502,36 +518,19 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }*/
 
-    boolean buildingPotion() {
+    boolean globalAccurate(byte type, short len, byte mul, String hint) {
         getAccount(account -> {
             for (short i = 0, n = (short) list.size(); i != n; i++) {
                 Item it = list.get(i);
-                if (it.type == Item.TYPE_HOME_BUILDING && it.account == account) {
+                if (it.type == type && it.account == account) {
                     cancelNotificationAlarm(it);
-                    it.time = accelerate(it.time, (short) 60, (byte) 10);
+                    it.time = accelerate(it.time, len, mul);
                     setNotificationAlarm(it);
                     resortForwardItem(i);
                 }
             }
             adapter.notifyDataSetChanged();
-            Toast.makeText(this, Item.ACCOUNT_NAME[account] + "的建筑工人药水加速成功!", Toast.LENGTH_SHORT).show();
-        });
-        return true;
-    }
-
-    boolean labPotion() {
-        getAccount(account -> {
-            for (short i = 0, n = (short) list.size(); i != n; i++) {
-                Item it = list.get(i);
-                if (it.type == Item.TYPE_HOME_LAB && it.account == account) {
-                    cancelNotificationAlarm(it);
-                    it.time = accelerate(it.time, (short) 60, (byte) 24);
-                    setNotificationAlarm(it);
-                    resortForwardItem(i);
-                }
-            }
-            adapter.notifyDataSetChanged();
-            Toast.makeText(this, Item.ACCOUNT_NAME[account] + "的研究药水加速成功!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, Item.ACCOUNT_NAME[account] + hint + "加速成功!", Toast.LENGTH_SHORT).show();
         });
         return true;
     }
@@ -608,16 +607,21 @@ public class MainActivity extends AppCompatActivity {
         alarmManager.cancel(pendingIntent);
     }
 
-    boolean refreshNotifications() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            Toast.makeText(this, "重置通知失败!", Toast.LENGTH_SHORT).show();
-            return false;
-        }
+    boolean refreshWithoutHint() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false;
         alarmManager.cancelAll();
         removeExpiredItems();
         for (Item it : list) setNotificationAlarm(it);
-        Toast.makeText(this, "重置通知成功!", Toast.LENGTH_SHORT).show();
         return true;
+    }
+
+    boolean refreshNotifications() {
+        if (refreshWithoutHint()) {
+            Toast.makeText(this, "重置通知成功!", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+        Toast.makeText(this, "重置通知失败!", Toast.LENGTH_SHORT).show();
+        return false;
     }
 
     void removeExpiredItems() {
