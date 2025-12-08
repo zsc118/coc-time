@@ -41,4 +41,5 @@
     <string name="studySoup">使用研究浓汤</string>
     <string name="customGlobalAcc">自定义全局加速</string>
     <string name="clear">清空</string>
+    <string name="reset">重置</string>
 </resources>

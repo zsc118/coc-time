@@ -96,6 +96,12 @@ public class Time implements Comparable<Time> {
         return new Time(calendar);
     }
 
+    public static Time getByLag(int minutes) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(Calendar.getInstance().getTimeInMillis()+minutes*60000L);
+        return new Time(calendar);
+    }
+
     public static Time getCurrent() {
         return new Time(Calendar.getInstance());
     }

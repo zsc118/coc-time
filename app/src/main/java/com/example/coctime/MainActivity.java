@@ -177,15 +177,15 @@ public class MainActivity extends AppCompatActivity {
             if (type != Item.TYPE_HOME_BUILDING)
                 menu.findItem(R.id.menu_apprentice).setVisible(false);
             if (type != Item.TYPE_HOME_LAB) menu.findItem(R.id.menu_assistant).setVisible(false);
+            if (type != Item.TYPE_OTHER) menu.findItem(R.id.menu_reset).setVisible(false);
         }
     }
 
     boolean clearAll() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (cancelAllNotifications()) {
             Toast.makeText(this, "清除通知失败!", Toast.LENGTH_SHORT).show();
             return false;
         }
-        alarmManager.cancelAll();
         list.clear();
         adapter.notifyDataSetChanged();
         return true;
@@ -200,6 +200,7 @@ public class MainActivity extends AppCompatActivity {
         pos = (short) info.position;
         if (id == R.id.menu_edt) return edit();
         if (id == R.id.menu_del) return del();
+        if (id == R.id.menu_reset) return reset();
         if (id == R.id.menu_accelerate) return userAccelerate();
         if (id == R.id.menu_apprentice) return applyApprentice();
         if (id == R.id.menu_assistant) return applyAssistant();
@@ -213,6 +214,16 @@ public class MainActivity extends AppCompatActivity {
             list.set(pos, list.get(i));
             while (i-- > 0 && it.compareTo(list.get(i)) < 0) list.set(i + 1, list.get(i));
             list.set(i + 1, it);
+        }
+    }
+
+    void resortBackwardItem(short pos) {
+        Item it = list.get(pos);
+        short i = (short) (pos + 1), n = (short) (list.size() - 1);
+        if (pos < n && it.compareTo(list.get(i)) > 0) {
+            list.set(pos, list.get(i));
+            while (i++ < n && it.compareTo(list.get(i)) > 0) list.set(i - 1, list.get(i));
+            list.set(i - 1, it);
         }
     }
 
@@ -230,6 +241,49 @@ public class MainActivity extends AppCompatActivity {
 
     boolean add() {
         startActivityForResult(new Intent(this, ItemEditActivity.class), 1);
+        return true;
+    }
+
+    boolean reset() {
+        Item it = list.get(pos);
+        switch (it.project) {
+            case "钟楼":
+            case "时光钟楼":
+                cancelNotificationAlarm(it);
+                it.time = Time.getByLag(1333 + bellTower); // 22 * 60 + 11 + bellTower
+                setNotificationAlarm(it);
+                resortBackwardItem(pos);
+                for (short i = 0, n = (short) list.size(); i != n; i++) {
+                    Item item = list.get(i);
+                    if (item.type == Item.TYPE_NIGHT && item.account == it.account) {
+                        cancelNotificationAlarm(item);
+                        item.time = accelerate(item.time, bellTower, (byte) 10);
+                        setNotificationAlarm(item);
+                        resortForwardItem(i);
+                    }
+                }
+                adapter.notifyDataSetChanged();
+                Toast.makeText(this, Item.ACCOUNT_NAME[it.account] + "时光钟楼重置成功!", Toast.LENGTH_SHORT).show();
+                break;
+            case "都城":
+            case "铸币坊":
+                cancelNotificationAlarm(it);
+                it.time = Time.getByLag(1391); // 23 * 60 + 11
+                setNotificationAlarm(it);
+                resortBackwardItem(pos);
+                adapter.notifyDataSetChanged();
+                Toast.makeText(this, Item.ACCOUNT_NAME[it.account] + "铸币坊重置成功!", Toast.LENGTH_SHORT).show();
+                break;
+            case "助手":
+            case "学徒":
+            case "帮手小屋":
+                cancelNotificationAlarm(it);
+                it.time = Time.getByLag(1391); // 23 * 60 + 11
+                setNotificationAlarm(it);
+                resortBackwardItem(pos);
+                adapter.notifyDataSetChanged();
+                Toast.makeText(this, Item.ACCOUNT_NAME[it.account] + "帮手小屋重置成功!", Toast.LENGTH_SHORT).show();
+        }
         return true;
     }
 
@@ -607,9 +661,14 @@ public class MainActivity extends AppCompatActivity {
         alarmManager.cancel(pendingIntent);
     }
 
-    boolean refreshWithoutHint() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false;
+    boolean cancelAllNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true;
         alarmManager.cancelAll();
+        return false;
+    }
+
+    boolean refreshWithoutHint() {
+        cancelAllNotifications();
         removeExpiredItems();
         for (Item it : list) setNotificationAlarm(it);
         return true;
